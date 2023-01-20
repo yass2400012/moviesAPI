@@ -15,7 +15,6 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config(); 
-const mongoose = require('mongoose');
 const MoviesDB = require("./modules/moviesDB.js");
 const db = new MoviesDB();
 const app = express();
