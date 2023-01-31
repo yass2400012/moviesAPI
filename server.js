@@ -14,7 +14,7 @@ const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-require('dotenv').config(); 
+const dotenv = require("dotenv").config();
 const MoviesDB = require("./modules/moviesDB.js");
 const db = new MoviesDB();
 const app = express();
@@ -25,80 +25,78 @@ app.use(cors());
 app.use(express.json());
 
 
-//get default Page
 app.get("/", function (req, res) {
-    res.send("API Listening");
-  });
-  
-  //post
-  app.post("/api/movies", async function (req, res) {
-    //try and catch method
-    try {
-      if (Object.keys(req.body).length === 0) {
-        return res.status(400).json({ error: "No movie data" });
-      }
-      const data = await db.addNewMovie(req.body);
+  res.json({ message: "API Listening" });
+});
+
+// routes /api/movies
+app.post("/api/movies", function (req, res) {
+  db.addNewMovie(req.body)
+    .then((data) => {
       res.status(201).json(data);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-  
-  //get movies
-  app.get("/api/movies", async function (req, res) {
-    try {
-      const data = await db.getAllMovies(
-        req.query.page,
-        req.query.perPage,
-        req.query.title || null
-      );
-      if (data.length === 0) {
-        return res.status(204).send();
-        console.log('data length is zero');
-      }
-      res.json(data);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-  
-  //get movies id
-  app.get("/api/movies/:_id", async function (req, res) {
-    try {
-      const data = await db.getMovieById(req.params._id);
-      //for empty
-      if (!data) {
-        return res.status(400).json({ error: "Movie not found." });
-      }
-      res.send(data);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-  
-  //delete
-  app.delete("/api/movies/:_id", async function (req, res) {
-    try {
-      const movie = await db.getMovieById(req.params._id);
-      await db.deleteMovieById(req.params._id);
-      res.json({ success: `Movie - ${movie.title} deleted!` });
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  });
-  
-  //put movie id
-  app.put("/api/movie/:_id", async function (req, res) {
-    try {
-      if (Object.keys(req.body).length === 0) {
-        return res.status(400).json({ error: "No data provided to update." });
-      }
-      const data = await db.updateMovieById(req.body, req.params._id);
-      res.json({ success: "Movie updated!" });
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  });
+    })
+    .catch(() => {
+      res.status(500).json({ errorMessage: "Unable to Add Movie" });
+    });
+});
+
+app.get("/api/movies", function (req, res) {
+  let queryPromise = null;
+
+  if (req.query.title) {
+    queryPromise = db.getAllMovies(
+      req.query.page,
+      req.query.perPage,
+      req.query.title
+    );
+  } else {
+    queryPromise = db.getAllMovies(req.query.page, req.query.perPage);
+  }
+
+  queryPromise
+    .then((data) => {
+      if (data) res.json(data);
+      else res.json({ errorMessage: "No Movies" });
+    })
+    .catch((err) => {
+      res.status(500).json({ errorMessage: err });
+    });
+});
+
+app.get("/api/movies/:id", function (req, res) {
+  db.getMovieById(req.params.id)
+    .then((data) => {
+      if (data) res.json(data);
+      else res.json({ errorMessage: "Movie Not Found" });
+    })
+    .catch(() => {
+      res.status(500).json({ errorMessage: "Unable to Get Movie" });
+    });
+});
+
+app.put("/api/movies/:id", function (req, res) {
+  db.updateMovieById(req.body, req.params.id)
+    .then(() => {
+      res.json({ successMessage: "Movie Updated" });
+    })
+    .catch(() => {
+      res.status(500).json({ errorMessage: "Unable to Update Movie" });
+    });
+});
+
+app.delete("/api/movies/:id", function (req, res) {
+  db.deleteMovieById(req.params.id)
+    .then(() => {
+      res.status(200).json({ successMessage: "Movie Deleted" });
+    })
+    .catch(() => {
+      res.status(500).json({ errorMessage: "Unable to Delete Movie" });
+    });
+});
+
+app.use((req, res) => {
+  res.status(404).send("Resource not found");
+});
   
   //initialize
   db.initialize(process.env.MONGODB_CONN_STRING)
